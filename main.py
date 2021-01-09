@@ -1,5 +1,6 @@
-import sqlalchemy
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+import psycopg2
 import requests
 import json
 import pandas as pd
@@ -8,9 +9,9 @@ import os
 from collections import defaultdict
 
 
-DATABASE_LOC = 'postgres://david:testpass123!@localhost:5432/my_spotify_playlist'
+DB_STRING = 'postgres://david:testpass123!@localhost:5432/my_spotify_playlist'
 USER_ID = 'vptcsa4x3uex55eyexny73e4o'
-TOKEN = 'BQB19vJScTo7tCrISEZqPyle2qaiDAGpClm6rdWAfx6cgnARpFAAQvzriQpaWm490EzbzeLDb7lGo7TQaVlvfTnI098oAkq3Rh12cqM8TKNHbh2h6yYzzbnwAD-RBBPOdZDCZWPbxW9UMbpWb3K9dbC-SW6BGkqZJB04'
+TOKEN = 'BQCwU_GRKCLOkE7xnIbiRIGB2RJVaRMGooYHoNfOvArDkW8DA7pr9Uq3BQYQB5MYZdCo8gd68VkMLJdEw-SQSRRpgxti5Yntvu5P8E-gfSZy3J00eYRB9vV4BsazcoWQdufE587rbA-Wfh1aOsyz-JDEwubyzfE_WYjG'
 
 
 def extract():
@@ -25,7 +26,7 @@ def extract():
     }
 
     endpoint = "https://api.spotify.com/v1/me/player/recently-played"
-    yesterday = datetime.now() - timedelta(days=1)
+    yesterday = datetime.now() - timedelta(days=2)
     yesterday_unix_timestamp = int(yesterday.timestamp()) * 1000
 
     r = requests.get(
@@ -71,14 +72,42 @@ def validate_df(df):
         raise ValueError("Missing values detected.")
 
     # Check if all timestamps are of yesterday's date.
-    yesterday = datetime.now() - timedelta(days=1)
-    yesterday = yesterday.replace(hour=0, minute=0, microsecond=0)
+    # yesterday = datetime.now() - timedelta(days=1)
+    # yesterday = yesterday.replace(hour=0, minute=0, microsecond=0)
 
-    for timestamp in df['timestamp']:
-        if timestamp != yesterday.strftime("%Y-%m-%d"):
-            raise ValueError("Wrong timestamp detected. At least one of the songs is not played within 24 hours.")
+    # for timestamp in df['timestamp']:
+    #     if timestamp != yesterday.strftime("%Y-%m-%d"):
+    #         raise ValueError("Wrong timestamp detected. At least one of the songs is not played within 24 hours.")
 
     print("Data is valid. Proceed to the load stage.")
+
+
+def load(df):
+    db = create_engine(DB_STRING)
+    conn = psycopg2.connect(database='my_spotify_playlist', user='david', host='localhost', password='testpass123!')
+    cursor = conn.cursor()
+    
+    query = """
+            CREATE TABLE IF NOT EXISTS songs(
+                title TEXT,
+                artists TEXT,
+                timestamp VARCHAR(255),
+                played_at VARCHAR(255) PRIMARY KEY,
+                urls TEXT
+            )
+            """
+
+    cursor.execute(query)
+
+    try:
+        df.to_sql("songs", db, index=False, if_exists='append')
+        print("Data successfully stored into the database.")
+    except:
+        print("Data already exists in the database.")
+
+    conn.commit()
+    conn.close()
+    print("Database closed.")
 
 
 if __name__ == "__main__":
@@ -87,5 +116,6 @@ if __name__ == "__main__":
     try:
         validate_df(song_df)
     except:
-        print("Data validation failed.")
-
+        print("An error has occured. Data validation failed.")
+    else:
+        load(song_df)
