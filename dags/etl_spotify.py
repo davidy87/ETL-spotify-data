@@ -110,7 +110,7 @@ def load(df):
     print("Database closed.")
 
 
-if __name__ == "__main__":
+def etl():
     song_df = extract()
 
     try:

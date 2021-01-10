@@ -7,6 +7,8 @@ from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from airflow.utils.dates import days_ago
 
+from etl_spotify import etl
+
 
 default_args = {
     'owner': 'airflow',
@@ -28,6 +30,10 @@ dag = DAG(
 
 run_etl = PythonOperator(
     task_id='spotify_etl',
-    python_callable=None,
+    python_callable=etl,
     dag=dag
 )
+
+
+if __name__ == "__main__":
+    run_etl
