@@ -7,11 +7,16 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 from collections import defaultdict
+import string
+import random
 
-
-DB_STRING = 'postgres://david:testpass123!@localhost:5432/my_spotify_playlist'
-USER_ID = 'vptcsa4x3uex55eyexny73e4o'
-TOKEN = 'BQCwU_GRKCLOkE7xnIbiRIGB2RJVaRMGooYHoNfOvArDkW8DA7pr9Uq3BQYQB5MYZdCo8gd68VkMLJdEw-SQSRRpgxti5Yntvu5P8E-gfSZy3J00eYRB9vV4BsazcoWQdufE587rbA-Wfh1aOsyz-JDEwubyzfE_WYjG'
+"""
+References:
+    https://spotipy.readthedocs.io/en/2.16.1/
+    https://github.com/plamere/spotipy
+"""
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
 
 
 def extract():
@@ -19,24 +24,18 @@ def extract():
     Extract data from Spotify and create a pandas dataframe.
     """
 
-    headers = {
-        "Accecpt": "appliction/json",
-        "Content-Type": "application/json",
-        "Authorization": "Bearer {token}".format(token=TOKEN)
-    }
+    client_id = '0f1f6981d38445b294dfd0001a32d65e'
+    client_secret = '5f33872d0f204dc984cc92a92283dc15'
 
-    endpoint = "https://api.spotify.com/v1/me/player/recently-played"
-    yesterday = datetime.now() - timedelta(days=2)
+    sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id, 
+                                                   client_secret=client_secret,
+                                                   redirect_uri="http://localhost:8888/callback",
+                                                   scope="user-read-recently-played"))
+
+    yesterday = datetime.now() - timedelta(days=1)
     yesterday_unix_timestamp = int(yesterday.timestamp()) * 1000
 
-    r = requests.get(
-        endpoint + "?after={time}".format(time=yesterday_unix_timestamp), 
-        headers=headers
-    )
-
-    data = r.json()
-    # print(json.dumps(data, indent=2))
-
+    data = sp.current_user_recently_played(limit=50, after=yesterday_unix_timestamp)
     song_dict = defaultdict(list)
 
     # Try to store data into a pandas dataframe.
@@ -72,19 +71,24 @@ def validate_df(df):
         raise ValueError("Missing values detected.")
 
     # Check if all timestamps are of yesterday's date.
-    # yesterday = datetime.now() - timedelta(days=1)
-    # yesterday = yesterday.replace(hour=0, minute=0, microsecond=0)
+    yesterday = datetime.now() - timedelta(days=1)
+    yesterday = yesterday.replace(hour=0, minute=0, microsecond=0)
 
-    # for timestamp in df['timestamp']:
-    #     if timestamp != yesterday.strftime("%Y-%m-%d"):
-    #         raise ValueError("Wrong timestamp detected. At least one of the songs is not played within 24 hours.")
+    for timestamp in df['timestamp']:
+        if timestamp != yesterday.strftime("%Y-%m-%d"):
+            raise ValueError("Wrong timestamp detected. At least one of the songs is not played within 24 hours.")
 
     print("Data is valid. Proceed to the load stage.")
 
 
 def load(df):
-    db = create_engine(DB_STRING)
-    conn = psycopg2.connect(database='my_spotify_playlist', user='david', host='localhost', password='testpass123!')
+    db_string = 'postgres://david:testpass123!@localhost:5432/my_spotify_playlist'
+    db = create_engine(db_string)
+    conn = psycopg2.connect(database='my_spotify_playlist', 
+                            user='david', 
+                            host='localhost', 
+                            password='testpass123!')
+                            
     cursor = conn.cursor()
     
     query = """
@@ -111,6 +115,10 @@ def load(df):
 
 
 def etl():
+    """
+    Perform ETL process
+    """
+    
     song_df = extract()
 
     try:
