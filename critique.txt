@@ -1,0 +1,19 @@
+What I did well:
+
+    -   When I extracted data from Spotify, I had to find a way to refresh the access token because it only
+    lasted for an hour. To make the whole extraction process including refreshing the access token, I used 
+    Spotipy, which is a python library for the Spotify Web API. With this library, I was able to extract the 
+    data easily, without taking care of keeping the access token up to date.
+
+
+What I learned:
+
+    -   I leared what ETL process is and how it works generally. Also, I learned how to schedule this process
+    using Airflow.
+
+
+What I can do better:
+
+    -   The data I used for this project was my daily play history in Spotify. Therefore, on one day, when I 
+    did not play any song, the extracted data contained an empty playlist. It would be better if I choose data
+    that contains few records at least.
