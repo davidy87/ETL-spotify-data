@@ -26,10 +26,12 @@ def extract():
 
     client_id = '0f1f6981d38445b294dfd0001a32d65e'
     client_secret = '5f33872d0f204dc984cc92a92283dc15'
+    state = ''.join(random.choices(string.ascii_uppercase + string.ascii_lowercase + string.digits, k=16))
 
     sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id, 
                                                    client_secret=client_secret,
                                                    redirect_uri="http://localhost:8888/callback",
+                                                   state=state,
                                                    scope="user-read-recently-played"))
 
     yesterday = datetime.now() - timedelta(days=1)
@@ -62,21 +64,13 @@ def validate_df(df):
     if df.empty:
         print("No songs have been downloaded.")
     
-    # Check primary key
+    # Check the primary key
     if not pd.Series(df['played_at']).is_unique:
         raise ValueError("Duplicates exist in a column. Cannot be an primary key.")
     
     # Check missing values
     if df.isna().values.any():
         raise ValueError("Missing values detected.")
-
-    # Check if all timestamps are of yesterday's date.
-    yesterday = datetime.now() - timedelta(days=1)
-    yesterday = yesterday.replace(hour=0, minute=0, microsecond=0)
-
-    for timestamp in df['timestamp']:
-        if timestamp != yesterday.strftime("%Y-%m-%d"):
-            raise ValueError("Wrong timestamp detected. At least one of the songs is not played within 24 hours.")
 
     print("Data is valid. Proceed to the load stage.")
 
@@ -120,6 +114,7 @@ def etl():
     """
     
     song_df = extract()
+    print(song_df)
 
     try:
         validate_df(song_df)
