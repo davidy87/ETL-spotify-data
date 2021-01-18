@@ -21,7 +21,7 @@ from spotipy.oauth2 import SpotifyOAuth
 
 def extract():
     """
-    Extract data from Spotify and create a pandas dataframe.
+    Extract data from Spotify.
     """
 
     client_id = '0f1f6981d38445b294dfd0001a32d65e'
@@ -38,6 +38,15 @@ def extract():
     yesterday_unix_timestamp = int(yesterday.timestamp()) * 1000
 
     data = sp.current_user_recently_played(limit=50, after=yesterday_unix_timestamp)
+
+    return data
+
+
+def transform(data):
+    """
+    Transform the extracted data to have few selected features and create a
+    dataframe from it.
+    """
     song_dict = defaultdict(list)
 
     # Try to store data into a pandas dataframe.
@@ -112,8 +121,8 @@ def etl():
     """
     Perform ETL process
     """
-    
-    song_df = extract()
+    data = extract()
+    song_df = transform(data)
     print(song_df)
 
     try:
